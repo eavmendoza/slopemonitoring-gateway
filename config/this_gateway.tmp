@@ -1,0 +1,10 @@
+[mysql]
+user=root
+pwd=r41Ng4ug3 
+
+[gateway]
+name=test1
+
+[rain]
+pin=18
+
