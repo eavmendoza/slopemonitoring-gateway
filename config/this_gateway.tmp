@@ -6,8 +6,8 @@ port=3306
 schema=gatewaydb
 
 [gateway]
-name=test1
+name=TEST1
 
 [rain]
 pin=18
-
+name=R1
