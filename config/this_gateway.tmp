@@ -1,6 +1,9 @@
 [mysql]
 user=root
 pwd=r41Ng4ug3 
+host=localhost
+port=3306
+schema=gatewaydb
 
 [gateway]
 name=test1
