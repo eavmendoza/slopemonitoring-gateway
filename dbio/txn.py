@@ -59,5 +59,3 @@ def read(query=''):
     finally:
         db.close()
         return ret_val
-
-print(write("insert into transactions (dt,message) values ('2018-07-22 10:36:00','test')"))
