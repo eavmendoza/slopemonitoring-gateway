@@ -7,7 +7,7 @@ def set():
     mem = client.get()
     config = ConfigParser()
     print(config.read(cfile))
-    mem.set("cnf",config)
+    mem.set("gatewaycnf",config)
 
 if __name__ == "__main__":
     set()
