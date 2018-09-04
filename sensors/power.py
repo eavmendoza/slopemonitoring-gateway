@@ -4,20 +4,26 @@ import time
 import argparse
 import sys
 from mqtt import mqttlib
+from datetime import datetime as dt
+from volmem import client
+
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 0.5
 ADDRESS = 0x40
 
-def read():
+def read(print_val=False):
     ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=ADDRESS)
     ina.configure(ina.RANGE_16V, ina.GAIN_AUTO)
 
-    print("Bus Voltage    : %.3f V" % ina.voltage())
-    print("Bus Current    : %.3f mA" % ina.current())
-    print("Supply Voltage : %.3f V" % ina.supply_voltage())
-    print("Shunt voltage  : %.3f mV" % ina.shunt_voltage())
-    print("Power          : %.3f mW" % ina.power())
+    if print_val:
+        print("Bus Voltage    : %.3f V" % ina.voltage())
+        print("Bus Current    : %.3f mA" % ina.current())
+        print("Supply Voltage : %.3f V" % ina.supply_voltage())
+        print("Shunt voltage  : %.3f mV" % ina.shunt_voltage())
+        print("Power          : %.3f mW" % ina.power())
+
+    return ina
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -32,13 +38,14 @@ def read_publish():
 
     btv = round(ina.supply_voltage(),2)
     cur = round(ina.current(),2)
+    ts = dt.today().strftime("%y%m%d%H%M%S")
 
-    message_value = "LGR:BCM-PDH-GTW1;BTV:{0};CUR:{1}".format(btv, cur)
+    message_value = "BCM-PDH-GTW1$BTV:{0};BTA:{1};DTM:{2}$".format(btv, 
+        cur, ts)
 
     print(message_value)
 
-    mqttlib.publish("gateway.gatewaytx", message_value)
-
+    client.push_pub_list(message_value)
 
 if __name__ == "__main__":
 
@@ -49,5 +56,5 @@ if __name__ == "__main__":
         sys.exit()
 
     while True:
-        read()
+        read(print_val=True)
         time.sleep(5)
