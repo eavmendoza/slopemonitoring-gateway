@@ -26,12 +26,15 @@ def rain_event(channel, rg):
     print(dt_today, rg.name)
     query = ("insert into transactions (dt, message) "
         "values ('%s','rgid:%s;dt:%s')" % (dt_today, rg.name, dt_today_coded))
+    print(query)
 
-    dbtxn.write(query)
+    # dbtxn.write(query)
 
 def main():
+    print("Setup rain ...")
     this_rain_gauge = RainProps()
     setup(this_rain_gauge)
+    print("done")
     try:
         while True:
             time.sleep(10000)

@@ -7,7 +7,6 @@ from mqtt import mqttlib
 from datetime import datetime as dt
 from volmem import client
 
-
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 0.5
 ADDRESS = 0x40
@@ -45,7 +44,9 @@ def read_publish():
 
     print(message_value)
 
-    client.push_pub_list(message_value)
+    # client.push_pub_list(message_value)
+    client.push_df_pub_list(message_value)
+
 
 if __name__ == "__main__":
 
