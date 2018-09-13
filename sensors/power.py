@@ -9,7 +9,7 @@ from volmem import client
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 0.5
-ADDRESS = 0x40
+ADDRESS = client.get().get("gateway_config")["ina219"]["address"]
 
 def read(print_val=False):
     ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=ADDRESS)
@@ -32,8 +32,7 @@ def get_arguments():
     return parser.parse_args()
 
 def read_publish():
-    ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=ADDRESS)
-    ina.configure(ina.RANGE_16V, ina.GAIN_AUTO)
+    ina = read()
 
     btv = round(ina.supply_voltage(),2)
     cur = round(ina.current(),2)
