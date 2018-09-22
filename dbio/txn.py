@@ -2,9 +2,10 @@ import MySQLdb
 from volmem import client
 import time
 import inspect
+from datetime import datetime as dt
 
 def connect():
-    conn = client.get().get("cnf")["mysql"]
+    conn = client.get().get("gateway_config")["mysql"]
     try:
         db = MySQLdb.connect(conn["host"], conn["user"], 
             conn["pwd"], conn["schema"])
@@ -59,3 +60,13 @@ def read(query=''):
     finally:
         db.close()
         return ret_val
+
+def sql_txn_log(msg):
+    dt_today = dt.today().strftime("%Y-%m-%d %H:%M:%S")
+    dt_today_coded = dt.today().strftime("%y%m%d%H%M%S")
+
+    query = ("insert into transactions (dt, message) "
+        "values ('{}','{}')".format(dt_today, msg))
+
+    write(query)
+
