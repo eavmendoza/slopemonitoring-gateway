@@ -30,7 +30,7 @@ def setup(rg):
 
 def rain_event(channel, rg):
     dt_today_coded = get_coded_dt()
-    print(dt_today, rg.name)
+    print(dt_today_coded, rg.name)
     message_value = "{};INS:1;DTM:{}".format(rg.name,dt_today_coded)
     client.push_df_pub_list(message_value)
     increment_rain_count(rg)
