@@ -17,8 +17,7 @@ def relay_serial_messages():
 
         print(message_value)
 
-        client.push_pub_list(message_value)
-
+        client.push_df_pub_list(message_value)
 
 if __name__ == "__main__":
 

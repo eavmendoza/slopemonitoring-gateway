@@ -3,6 +3,7 @@ import time
 from volmem import client as volmem_client
 import sys
 import mqtt.mqttlib as mqttlib
+from dbio import txn as dbtxn
 
 def publish_pub_list(mqtt_client, mc_client):
     # print "Sending from memory ..."
@@ -24,6 +25,7 @@ def publish_pub_list(mqtt_client, mc_client):
         print(msg_str)
 
         stat = mqtt_client.publish('gateway.gatewaytx', msg_str)
+        dbtxn.sql_txn_log(msg_str)
         
         df_pub_list.loc[index, 'stat'] = 1
 

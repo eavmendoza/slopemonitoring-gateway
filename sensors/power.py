@@ -46,9 +46,6 @@ def read_publish():
 
     # client.push_pub_list(message_value)
     client.push_df_pub_list(message_value)
-    dbtxn.sql_txn_log(message_value)
-
-
 
 if __name__ == "__main__":
 
