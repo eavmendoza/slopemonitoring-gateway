@@ -1,13 +1,22 @@
 [mysql]
-user=slope_remote
-pwd=r41Ng4ug3 
+user=edcuser
+pwd=r4ing4ug3 
 host=localhost
 port=3306
-schema=gatewaydb
+schema=edcrpidb
 
 [gateway]
-name=TEST1
+name = BCM-PDH
+logger=GTW1
 
 [rain]
-pin=18
-name=R1
+pin = 18
+name=RG1
+
+[mqtt]
+key = '437c1e57fd9941fcb444c504eea003d1'
+username = 'eavmendoza'
+
+[ina219]
+address = 64
+
