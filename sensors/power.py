@@ -39,13 +39,18 @@ def read_publish():
     cur = round(ina.current(),2)
     ts = dt.today().strftime("%y%m%d%H%M%S")
 
-    message_value = "BCM-PDH-GTW1$BTV:{0};BTA:{1};DTM:{2}$".format(btv, 
-        cur, ts)
+    mc = client.get()
+    cnf = mc.get("gateway_config")
+    gateway_name = "{}-{}".format(cnf["gateway"]["name"], 
+        cnf["gateway"]["logger"])
+
+    message_value = "{}$BTV:{};BTA:{};DTM:{}$".format(gateway_name,
+        btv, cur, ts)
 
     print(message_value)
 
     # client.push_pub_list(message_value)
-    client.push_df_pub_list(message_value)
+    # client.push_df_pub_list(message_value)
 
 if __name__ == "__main__":
 

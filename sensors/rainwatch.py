@@ -31,7 +31,7 @@ def setup(rg):
 def rain_event(channel, rg):
     dt_today_coded = get_coded_dt()
     print(dt_today_coded, rg.name)
-    message_value = "{};INS:1;DTM:{}".format(rg.name,dt_today_coded)
+    message_value = "{}$TIP:1;DTM:{}$".format(rg.name,dt_today_coded)
     client.push_df_pub_list(message_value)
     increment_rain_count(rg)
 
@@ -54,7 +54,7 @@ def increment_rain_count(rg):
 def report_rain_tips(rg, period=30):
     tips = count_rain_tips(rg)
     dt_today_coded = get_coded_dt()
-    message_value = "{};PER:{};VAL:{};DTM:{}".format(rg.name, period, tips,
+    message_value = "{}$PER:{};TIP:{};DTM:{}$".format(rg.name, period, tips,
         dt_today_coded)
     print(message_value)
     client.push_df_pub_list(message_value)
