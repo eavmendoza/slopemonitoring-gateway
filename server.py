@@ -20,12 +20,18 @@ def publish_pub_list(mqtt_client, mc_client):
     unpublished_list = df_pub_list[df_pub_list["stat"] == 0]
     # print(unpublished_list)
 
+    # print("Server running")
+
     for index, row in unpublished_list.iterrows():
         msg_str = row['msg']
         print(msg_str)
 
-        stat = mqtt_client.publish('gateway.gatewaytx', msg_str)
+        if mqtt_client:
+            stat = mqtt_client.publish('gateway.gatewaytx', msg_str)
+        
+        print("Save to memory ", end="")
         dbtxn.sql_txn_log(msg_str)
+        print("done")
         
         df_pub_list.loc[index, 'stat'] = 1
 
@@ -45,7 +51,7 @@ def publish_pub_list(mqtt_client, mc_client):
     mc_client.set("df_pub_list", df_pub_list)
 
 def server():
-    mqtt_client = mqttlib.get_client()
+    print("Setting up memory ...", end='')
     mc_client = volmem_client.get()
     df_pub_list = mc_client.get("df_pub_list")
 
@@ -53,11 +59,27 @@ def server():
         if not df_pub_list:
             volmem_client.reset_memory("df_pub_list")
     except ValueError:
-        print("df_pub_list maybe present. continuing")
+        print(" df_pub_list maybe present. continuing ... ", end=' ')
+
+    print("done")
+
+    print("Connecting to mqtt_lient ", end='')
+    try:
+        mqtt_client = mqttlib.get_client()
+    except:
+        print("Error connecting to server")
+        mqtt_client = None
+    print("done")
+
 
     while True:
         publish_pub_list(mqtt_client, mc_client)
 
+        if not mqtt_client:
+            print("Delay before reconnection")
+            time.sleep(50)
+            print("Restarting server")
+            break
         time.sleep(1)
 
 if __name__ == "__main__":

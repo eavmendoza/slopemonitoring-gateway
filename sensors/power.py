@@ -29,10 +29,20 @@ def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p","--publish", help="publish data",
         action="store_true")
+    parser.add_argument("-d","--delay", help="delay", type=int)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+        
+    if args.publish:
+        print("Will publish data")
 
-def read_publish():
+    if not args.delay:
+        args.delay = 30
+    print("Delay={}".format(args.delay))
+    
+    return args
+
+def read_publish(delay):
     ina = read()
 
     btv = round(ina.supply_voltage(),2)
@@ -50,14 +60,15 @@ def read_publish():
     print(message_value)
 
     # client.push_pub_list(message_value)
-    # client.push_df_pub_list(message_value)
+    time.sleep(delay)
+    client.push_df_pub_list(message_value)
 
 if __name__ == "__main__":
 
     args = get_arguments()
 
     if args.publish:
-        read_publish()
+        read_publish(args.delay)
         sys.exit()
 
     while True:
