@@ -48,8 +48,7 @@ def count_rain_tips(rg):
     return tips
 
 def increment_rain_count(rg):
-    tips = count_rain_tips(rg)
-    rg.mem.set("rain_count", tips+1)
+    rg.mem.incr("rain_count")
 
 def report_rain_tips(rg, period=30):
     tips = count_rain_tips(rg)

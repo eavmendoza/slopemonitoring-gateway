@@ -2,9 +2,11 @@ import memcache
 import pandas as pd
 from datetime import datetime as dt
 from datetime import timedelta as td
+import pylibmc
 
 def get():
-    return memcache.Client([('127.0.0.1', 11211)])
+    return pylibmc.Client(["127.0.0.1"], binary=True,
+        behaviors={"tcp_nodelay": True, "ketama": True})
 
 def push_pub_list(message_value):
     mc = get()
