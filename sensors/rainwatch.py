@@ -5,6 +5,9 @@ from volmem import client
 from dbio import txn as dbtxn
 from datetime import datetime as dt
 import sys
+from signal import pause
+
+LAST_TIP_DT = dt.today()
 
 class RainProps:
     def __init__(self):
@@ -15,25 +18,36 @@ class RainProps:
         self.mem = mc    
 
 def get_coded_dt():
-    dt_today = dt.today().strftime("%Y-%m-%d %H:%M:%S")
-    dt_today_coded = dt.today().strftime("%y%m%d%H%M%S")
-    return dt_today_coded
+    return dt.today().strftime("%y%m%d%H%M%S")
 
-def setup(rg):
+def gpio_setup(rg):
     rain_pin = rg.rain_pin
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(rain_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     cb = lambda channel, arg1=rg: rain_event(channel, arg1)
-    GPIO.add_event_detect(rain_pin, GPIO.FALLING, callback=cb, bouncetime=1000)  
+    # cb = rain_event
+    GPIO.add_event_detect(rain_pin, GPIO.FALLING, callback=cb, bouncetime=500)  
 
 def rain_event(channel, rg):
+
+    global LAST_TIP_DT
+    dt_event = dt.today()
+    time_from_last_tip = dt_event - LAST_TIP_DT
+    if time_from_last_tip.seconds < 3:
+        print("Debounce")
+        return
+    else:
+        print(time_from_last_tip.seconds, end="")
+        LAST_TIP_DT = dt_event
+
+    # else record rain pulse
+    rg.mem.incr("rain_count")
     dt_today_coded = get_coded_dt()
     print(dt_today_coded, rg.name)
     message_value = "{}$TIP:1;DTM:{}$".format(rg.name,dt_today_coded)
     client.push_df_pub_list(message_value)
-    increment_rain_count(rg)
 
 def reset_rain_count(rg):
     rg.mem.set("rain_count", 0)
@@ -46,9 +60,6 @@ def count_rain_tips(rg):
         return 0
 
     return tips
-
-def increment_rain_count(rg):
-    rg.mem.incr("rain_count")
 
 def report_rain_tips(rg, period=30):
     tips = count_rain_tips(rg)
@@ -75,9 +86,16 @@ def get_arguments():
 def main():
     args = get_arguments()
 
-    print("Setup rain ... ", end='')
+    print("Getting rain props ... ", end='')
     this_rain_gauge = RainProps()
-    setup(this_rain_gauge)
+    print("done")
+    print("Gpio setup ... ", end='')
+    gpio_setup(this_rain_gauge)
+    print("done")
+    print("Setting count ... ", end='')
+    count = this_rain_gauge.mem.get("rain_count")
+    if not count:
+        reset_rain_count(this_rain_gauge)
     print("done")
 
     if args.reset:
@@ -97,7 +115,11 @@ def main():
     
     try:
         while True:
-            time.sleep(10000)
+            time.sleep(60)
+            GPIO.remove_event_detect(this_rain_gauge.rain_pin)
+            GPIO.cleanup()
+            gpio_setup(this_rain_gauge)
+            print(".", end="")
     except KeyboardInterrupt:
         print("Bye")
         
