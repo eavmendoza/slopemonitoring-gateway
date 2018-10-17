@@ -3,6 +3,8 @@ from screenutils import list_screens, Screen
 import re
 import os
 import subprocess
+import argparse
+import sys
 
 def execute_cmd(cmd, wait_for_out=True):
     my_env = os.environ.copy()
@@ -22,7 +24,7 @@ def execute_cmd(cmd, wait_for_out=True):
     else:
         return
 
-def main():
+def get_jobs():
     gateway_cron  = CronTab(user='pi')
 
     screen_jobs = {}
@@ -32,6 +34,11 @@ def main():
             screen_name = re.search("(?<=Sdm )\w+(?= python3)", repr(job)).group(0)
             screen_jobs[screen_name] = re.search("screen.+(?=$)", job.command).group(0)
 
+    return screen_jobs
+
+def run_daemons():
+    screen_jobs  = get_jobs()
+
     for name in screen_jobs.keys():
         if not Screen(name).exists:
             print("Running {}".format(name))
@@ -39,6 +46,29 @@ def main():
         else:
             print("{} is running".format(name))
 
+def kill_daemons():
+    for screen in list_screens():
+        print("Killing {}".format(screen))
+        screen.kill()
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r","--run", help="run jobs", action="store_true")
+    parser.add_argument("-k","--kill", help="force kill jobs", action="store_true")
+
+    args = parser.parse_args()
+
+    return args
+
 
 if __name__ == "__main__":
-    main()
+    args = get_arguments()
+
+    if args.kill:
+        kill_daemons()
+
+    if args.run:
+        run_daemons()
+        sys.exit()
+

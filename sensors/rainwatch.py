@@ -39,7 +39,7 @@ def rain_event(channel, rg):
         print("Debounce")
         return
     else:
-        print(time_from_last_tip.seconds, end="")
+        print(time_from_last_tip.seconds, end=" ")
         LAST_TIP_DT = dt_event
 
     # else record rain pulse
