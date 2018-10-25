@@ -14,8 +14,8 @@ pin = 18
 name=RG1
 
 [mqtt]
-key = '437c1e57fd9941fcb444c504eea003d1'
-username = 'eavmendoza'
+key = 
+username = 
 
 [ina219]
 address = 64

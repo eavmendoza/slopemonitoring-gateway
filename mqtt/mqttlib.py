@@ -3,8 +3,14 @@ import time
 from volmem import client as volmem_client
 import sys
 
-ADAFRUIT_IO_KEY      = '437c1e57fd9941fcb444c504eea003d1'
-ADAFRUIT_IO_USERNAME = 'eavmendoza' 
+mc_client = volmem_client.get()
+mqtt_config = mc_client.get("gateway_config")["mqtt"]
+
+ADAFRUIT_IO_KEY      = mqtt_config["key"]
+ADAFRUIT_IO_USERNAME = mqtt_config["username"]
+
+print(ADAFRUIT_IO_USERNAME)
+print(ADAFRUIT_IO_KEY)
 
 class DisconnectException(Exception):
     pass
