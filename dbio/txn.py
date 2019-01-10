@@ -61,12 +61,12 @@ def read(query=''):
         db.close()
         return ret_val
 
-def sql_txn_log(msg):
+def sql_txn_log(msg, stat=0):
     dt_today = dt.today().strftime("%Y-%m-%d %H:%M:%S")
-    dt_today_coded = dt.today().strftime("%y%m%d%H%M%S")
 
-    query = ("insert into transactions (dt, message) "
-        "values ('{}','{}')".format(dt_today, msg))
+    query = ("insert into transactions (dt, message, stat) "
+        "values ('{}','{}','{}')".format(dt_today, msg, stat))
 
     write(query)
+
 
