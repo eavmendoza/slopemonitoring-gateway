@@ -29,4 +29,4 @@ PYTHONPATH=/home/pi/gateway
 @reboot sleep 45 && screen -Sdm rain python3 /home/pi/gateway/sensors/rainwatch.py
 
 */10 * * * * python3 /home/pi/gateway/sensors/power.py -p
-*/30 * * * * python3 /home/pi/gateway/sensors/rainwatch.py -p30
+*/30 * * * * python3 /home/pi/gateway/sensors/rainwatch.py -p10
