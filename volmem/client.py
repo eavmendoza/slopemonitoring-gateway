@@ -1,7 +1,7 @@
-import memcache
-import pandas as pd
-from datetime import datetime as dt
-from datetime import timedelta as td
+import imp
+import datetime
+dt = datetime.datetime
+td = datetime.timedelta
 import pylibmc
 
 def get():
@@ -11,6 +11,8 @@ def get():
 def push_pub_list(message_value):
     mc = get()
     pub_list = mc.get("pub_list")
+    if not pub_list:
+        pub_list = []
     pub_list.append(message_value)
     mc.set("pub_list", pub_list)
 
