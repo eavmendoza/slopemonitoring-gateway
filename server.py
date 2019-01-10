@@ -3,37 +3,75 @@ import time
 from volmem import client as volmem_client
 import sys
 import mqtt.mqttlib as mqttlib
-from dbio import txn as dbtxn
+from dbio import txn
+import datetime
+dt = datetime.datetime
+td = datetime.timedelta
+
+DBNAME = "edcrpidb"
+TXNTABLE = "transactions"
+DTFMT = "%Y-%m-%d %H-%M-%S"
+
+class NoMQTTConnectionException(Exception):
+    pass
+
+def get_messages(stat=0, limit=30, delay=None):
+
+    start_time_q = ""
+    if delay:
+        start_time = dt.today() - td(minutes=delay)
+        start_time_q = "and dt > '{}'".format(start_time.strftime(DTFMT))
+
+    query = ("select id, message as msg from {0}.{1} "
+        "where stat = {2} {4} order by id desc limit {3}".format(DBNAME, 
+            TXNTABLE, stat, limit, start_time_q))
+
+    return txn.read(query)
+
+def update_messages_status(id_list=None, stat=0):
+    if not id_list:
+        raise ValueError("id_list must not be empty")
+
+    ids_str = str(id_list)[1:-1]
+    query = ("update {}.{} set stat = {} where id in ({})".format(DBNAME, 
+        TXNTABLE, stat, ids_str))
+    # print(query)
+    txn.write(query)
+
 
 def publish_pub_list(mqtt_client, mc_client):
-    # print "Sending from memory ..."
-    # mc = common.get_mc_server()
-    # sc = mc.get('server_config')
-    # smsoutbox = mc.get("smsoutbox")
-
-    # print smsoutbox
-    # phonebook = mc.get("phonebook")
-
-    # resend_limit = sc['gsmio']['sendretry']
-    df_pub_list = mc_client.get("df_pub_list")
-
-    unpublished_list = df_pub_list[df_pub_list["stat"] == 0]
+    unpublished_list = mc_client.get("pub_list")
     # print(unpublished_list)
 
     # print("Server running")
+    mqtt_feed_name = mc_client.get("gateway_config")["mqtt"]["feed"]
 
-    for index, row in unpublished_list.iterrows():
-        msg_str = row['msg']
+    res, stat = None, None
+
+    # for index, row in unpublished_list.iterrows():
+        # msg_str = row['msg']
+    for msg_str in unpublished_list:
         print(msg_str)
 
-        if mqtt_client:
-            stat = mqtt_client.publish('gateway.gatewaytx', msg_str)
+        try:
+            if mqtt_client.is_connected():
+            # if mqtt_client:
+                res, stat = mqtt_client.publish(mqtt_feed_name, msg_str)
+                pub_stat = 1
+            else:
+                print("Not connected")
+                pub_stat = 0
+        except AttributeError:
+            print("MQTT client does not exist")
+            pub_stat = 0
+
+        print(res, stat)
         
         print("Save to memory ", end="")
-        dbtxn.sql_txn_log(msg_str)
+        dbtxn.sql_txn_log(msg_str, pub_stat)
         print("done")
         
-        df_pub_list.loc[index, 'stat'] = 1
+        # df_pub_list.loc[index, 'stat'] = 1
 
     # print(df_pub_list)
 
@@ -50,37 +88,56 @@ def publish_pub_list(mqtt_client, mc_client):
 
     mc_client.set("df_pub_list", df_pub_list)
 
+def publish_messages(messages, mqtt_client, mqtt_feed_name):
+    msg_dict = {}
+    for mid, msg in messages:
+        msg_dict[mid] = msg
+
+    published_ids = []
+
+    for mid in msg_dict:
+        print("Publishing:", msg_dict[mid], end='... ')
+        mqtt_client.publish(mqtt_feed_name, msg_dict[mid])
+        print("done")
+        published_ids.append(mid)
+        time.sleep(1)
+
+    return published_ids
+
 def server():
     print("Setting up memory ...", end='')
     mc_client = volmem_client.get()
     df_pub_list = mc_client.get("df_pub_list")
 
-    try:
-        if not df_pub_list:
-            volmem_client.reset_memory("df_pub_list")
-    except ValueError:
-        print(" df_pub_list maybe present. continuing ... ", end=' ')
-
-    print("done")
-
-    print("Connecting to mqtt_lient ", end='')
+    print("Connecting to mqtt_client ", end='')
     try:
         mqtt_client = mqttlib.get_client()
     except:
         print("Error connecting to server")
         mqtt_client = None
+        raise NoMQTTConnectionException
+    mqtt_feed_name = mc_client.get("gateway_config")["mqtt"]["feed"]
     print("done")
 
-
     while True:
-        publish_pub_list(mqtt_client, mc_client)
+        recent_messages = get_messages(limit=10, delay=10)
+        old_messages = get_messages(limit=3)
 
-        if not mqtt_client:
-            print("Delay before reconnection")
-            time.sleep(50)
-            print("Restarting server")
-            break
-        time.sleep(1)
+        if recent_messages:
+            print("Sending recent messages")
+            published_ids = publish_messages(recent_messages, mqtt_client, 
+                mqtt_feed_name)
+            update_messages_status(id_list=published_ids, stat=1)
+            print("10 seconds delay")
+            time.sleep(10)
+
+        if old_messages:
+            print("Sending old messages")
+            published_ids = publish_messages(old_messages, mqtt_client, 
+                mqtt_feed_name)
+            update_messages_status(id_list=published_ids, stat=1)
+            print("1 min delay")
+            time.sleep(60)    
 
 if __name__ == "__main__":
 
@@ -92,3 +149,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("Bye")
             sys.exit()
+        except NoMQTTConnectionException:
+            # wait 5 mins before reconnecting
+            time.sleep(60*5)
