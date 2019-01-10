@@ -1,27 +1,31 @@
-import RPi.GPIO as GPIO
+import timeit
 import time
+from dbio import txn
 import argparse
-from volmem import client
-from dbio import txn as dbtxn
+import volmem.client 
 from datetime import datetime as dt
-import sys
-from signal import pause
 
 LAST_TIP_DT = dt.today()
 
 class RainProps:
     def __init__(self):
-        mc = client.get()
+        print("Getting rain props ... ", end='')
+        mc = volmem.client.get()
         cnf = mc.get("gateway_config")
         self.rain_pin = int(cnf["rain"]["pin"])
         self.name = "{}-{}".format(cnf["gateway"]["name"], cnf["rain"]["name"])
         self.mem = mc    
+        print("done")
+
 
 def get_coded_dt():
     return dt.today().strftime("%y%m%d%H%M%S")
 
 def gpio_setup(rg):
+    print("Gpio setup ... ", end='')
     rain_pin = rg.rain_pin
+
+    import RPi.GPIO as GPIO
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(rain_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -29,6 +33,7 @@ def gpio_setup(rg):
     cb = lambda channel, arg1=rg: rain_event(channel, arg1)
     # cb = rain_event
     GPIO.add_event_detect(rain_pin, GPIO.FALLING, callback=cb, bouncetime=500)  
+    print("done")
 
 def rain_event(channel, rg):
 
@@ -47,7 +52,7 @@ def rain_event(channel, rg):
     dt_today_coded = get_coded_dt()
     print(dt_today_coded, rg.name)
     message_value = "{}$TIP:1;DTM:{}$".format(rg.name,dt_today_coded)
-    client.push_df_pub_list(message_value)
+    volmem.client.push_pub_list(message_value)
 
 def reset_rain_count(rg):
     rg.mem.set("rain_count", 0)
@@ -67,7 +72,15 @@ def report_rain_tips(rg, period=30):
     message_value = "{}$PER:{};TIP:{};DTM:{}$".format(rg.name, period, tips,
         dt_today_coded)
     print(message_value)
-    client.push_df_pub_list(message_value)
+
+    # previous way of counting tips, save to memory
+    # volmem.client.push_pub_list(message_value)
+
+    # save directly to sql
+    start_time = timeit.default_timer()
+    txn.sql_txn_log(message_value)
+    print("exec_time:", timeit.default_timer() - start_time)
+
     reset_rain_count(rg)
 
 def get_arguments():
@@ -83,20 +96,26 @@ def get_arguments():
 
     return args
 
-def main():
-    args = get_arguments()
-
-    print("Getting rain props ... ", end='')
-    this_rain_gauge = RainProps()
-    print("done")
-    print("Gpio setup ... ", end='')
-    gpio_setup(this_rain_gauge)
-    print("done")
+def set_rain_count(this_rain_gauge):
     print("Setting count ... ", end='')
     count = this_rain_gauge.mem.get("rain_count")
     if not count:
         reset_rain_count(this_rain_gauge)
     print("done")
+
+def main():
+    start_time = timeit.default_timer()
+    args = get_arguments()
+
+    this_rain_gauge = RainProps()
+
+    if args.report > 0:
+        print("Reporting rain")
+        report_rain_tips(this_rain_gauge, args.report)
+        return
+
+    gpio_setup(this_rain_gauge)
+    set_rain_count(this_rain_gauge)
 
     if args.reset:
         print("Resetting rain count ... ", end='')
@@ -109,10 +128,7 @@ def main():
         print("Rain tips: {}".format(tips))
         return
 
-    if args.report > 0:
-        report_rain_tips(this_rain_gauge, args.report)
-        return
-    
+    import RPi.GPIO as GPIO
     try:
         while True:
             time.sleep(60)
