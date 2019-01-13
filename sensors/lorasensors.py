@@ -1,6 +1,7 @@
 import serial
 from volmem import client
 from datetime import datetime as dt
+from dbio import txn
 
 def relay_serial_messages():
     ser = serial.Serial('/dev/ttyAMA0')  # open serial port
@@ -17,7 +18,8 @@ def relay_serial_messages():
 
         print(message_value)
 
-        client.push_df_pub_list(message_value)
+        # client.push_df_pub_list(message_value)
+        txn.sql_txn_log(message_value)
 
 if __name__ == "__main__":
 

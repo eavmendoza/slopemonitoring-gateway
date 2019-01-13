@@ -6,7 +6,7 @@ import sys
 from mqtt import mqttlib
 from datetime import datetime as dt
 from volmem import client
-from dbio import txn as dbtxn
+from dbio import txn
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 0.5
@@ -60,8 +60,10 @@ def read_publish(delay):
     print(message_value)
 
     # client.push_pub_list(message_value)
-    time.sleep(delay)
-    client.push_df_pub_list(message_value)
+    # time.sleep(delay)
+    # client.push_df_pub_list(message_value)
+    txn.sql_txn_log(message_value)
+
 
 if __name__ == "__main__":
 
