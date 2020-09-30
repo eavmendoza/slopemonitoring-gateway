@@ -4,6 +4,8 @@ from dbio import txn
 import argparse
 import volmem.client 
 from datetime import datetime as dt
+import RPi.GPIO as GPIO
+import subprocess as sub
 
 LAST_TIP_DT = dt.today()
 
@@ -27,23 +29,33 @@ def gpio_setup(rg):
 
     import RPi.GPIO as GPIO
 
-    GPIO.setmode(GPIO.BCM)
+    # GPIO.setmode(GPIO.BCM)
+    GPIO.setmode(GPIO.BOARD)
     GPIO.setup(rain_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    print(rain_pin)
+    # GPIO.setup(rain_pin, GPIO.OUT)
+    # GPIO.output(rain_pin, GPIO.HIGH)
+    # print("Infinite loop")
+    # while(True):
+    #     pass
 
     cb = lambda channel, arg1=rg: rain_event(channel, arg1)
     # cb = rain_event
     GPIO.add_event_detect(rain_pin, GPIO.FALLING, callback=cb, bouncetime=500)  
+    # GPIO.add_event_detect(rain_pin, GPIO.FALLING, callback=cb)
     print("done")
 
 def rain_event(channel, rg):
 
     global LAST_TIP_DT
     dt_event = dt.today()
+    print("TIP")
     time_from_last_tip = dt_event - LAST_TIP_DT
     if time_from_last_tip.seconds < 3:
         print("Debounce")
         return
     else:
+        sub.Popen(['python3', '/home/pi/gateway2/sensors/led.py', '-d500'], stdout=sub.PIPE, stderr=sub.STDOUT)
         print(time_from_last_tip.seconds, end=" ")
         LAST_TIP_DT = dt_event
 
@@ -109,6 +121,8 @@ def main():
 
     this_rain_gauge = RainProps()
 
+    GPIO.cleanup()
+
     if args.report > 0:
         print("Reporting rain")
         report_rain_tips(this_rain_gauge, args.report)
@@ -128,10 +142,9 @@ def main():
         print("Rain tips: {}".format(tips))
         return
 
-    import RPi.GPIO as GPIO
     try:
         while True:
-            time.sleep(60)
+            time.sleep(300)
             GPIO.remove_event_detect(this_rain_gauge.rain_pin)
             GPIO.cleanup()
             gpio_setup(this_rain_gauge)

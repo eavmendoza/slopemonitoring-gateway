@@ -15,7 +15,7 @@ DTFMT = "%Y-%m-%d %H-%M-%S"
 class NoMQTTConnectionException(Exception):
     pass
 
-def get_messages(stat=0, limit=30, delay=None):
+def get_messages(stat=0, limit=30, delay=None, recent=False):
 
     start_time_q = ""
     if delay:
@@ -23,7 +23,7 @@ def get_messages(stat=0, limit=30, delay=None):
         start_time_q = "and dt > '{}'".format(start_time.strftime(DTFMT))
 
     query = ("select id, message as msg from {0}.{1} "
-        "where stat = {2} {4} order by id desc limit {3}".format(DBNAME, 
+        "where stat = {2} {4} order by id desc limit {3}".format(DBNAME,
             TXNTABLE, stat, limit, start_time_q))
 
     return txn.read(query)
@@ -33,7 +33,7 @@ def update_messages_status(id_list=None, stat=0):
         raise ValueError("id_list must not be empty")
 
     ids_str = str(id_list)[1:-1]
-    query = ("update {}.{} set stat = {} where id in ({})".format(DBNAME, 
+    query = ("update {}.{} set stat = {} where id in ({})".format(DBNAME,
         TXNTABLE, stat, ids_str))
     # print(query)
     txn.write(query)
@@ -66,11 +66,11 @@ def publish_pub_list(mqtt_client, mc_client):
             pub_stat = 0
 
         print(res, stat)
-        
+
         print("Save to memory ", end="")
         dbtxn.sql_txn_log(msg_str, pub_stat)
         print("done")
-        
+
         # df_pub_list.loc[index, 'stat'] = 1
 
     # print(df_pub_list)
@@ -83,8 +83,8 @@ def publish_pub_list(mqtt_client, mc_client):
     df_pub_list_new_inserts = df_pub_list_updated[df_pub_list_updated.ts > ts_latest]
 
     # append new items in existing smsoutbox
-    df_pub_list = df_pub_list.append(df_pub_list_new_inserts, 
-        ignore_index = True, sort=True) 
+    df_pub_list = df_pub_list.append(df_pub_list_new_inserts,
+        ignore_index = True, sort=True)
 
     mc_client.set("df_pub_list", df_pub_list)
 
@@ -104,51 +104,60 @@ def publish_messages(messages, mqtt_client, mqtt_feed_name):
 
     return published_ids
 
+def log_to_remote(messages):
+    msg_dict = {}
+    for mid, msg in messages:
+        msg_dict[mid] = msg
+
+
+    published_ids = []
+    unpublished_ids = []
+
+    for mid in msg_dict:
+        print("Logging to remote:", msg_dict[mid], end='... ')
+        stat = txn.sql_txn_log(msg_dict[mid], dbname="db_remote")
+        if stat:
+            published_ids.append(mid)
+            print("Success!")
+        else:
+            print("ERROR: cannot log to remote")
+            unpublished_ids.append(mid)
+        time.sleep(0.5)
+    return published_ids, unpublished_ids
+
 def server():
     print("Setting up memory ...", end='')
     mc_client = volmem_client.get()
     df_pub_list = mc_client.get("df_pub_list")
 
-    print("Connecting to mqtt_client ", end='')
-    try:
-        mqtt_client = mqttlib.get_client()
-    except:
-        print("Error connecting to server")
-        mqtt_client = None
-        raise NoMQTTConnectionException
-    mqtt_feed_name = mc_client.get("gateway_config")["mqtt"]["feed"]
-    print("done")
-
     while True:
-        recent_messages = get_messages(limit=10, delay=10)
-        old_messages = get_messages(limit=3)
 
+        recent_messages = get_messages(limit=10, delay=10)
+        old_messages = get_messages(limit=50)
         if recent_messages:
             print("Sending recent messages")
-            published_ids = publish_messages(recent_messages, mqtt_client, 
-                mqtt_feed_name)
-            update_messages_status(id_list=published_ids, stat=1)
-            print("10 seconds delay")
-            time.sleep(10)
-
-        if old_messages:
+            published_ids, unpublished_ids = log_to_remote(recent_messages)
+            if published_ids:
+                update_messages_status(id_list=published_ids, stat=1)
+            if unpublished_ids:
+                update_messages_status(id_list=unpublished_ids, stat=-1)
+            
+        elif old_messages:
             print("Sending old messages")
-            published_ids = publish_messages(old_messages, mqtt_client, 
-                mqtt_feed_name)
-            update_messages_status(id_list=published_ids, stat=1)
-            print("1 min delay")
-            time.sleep(60)    
+            published_ids, unpublished_ids = log_to_remote(old_messages)
+            if published_ids:
+                update_messages_status(id_list=published_ids, stat=1)
+            if unpublished_ids:
+                update_messages_status(id_list=unpublished_ids, stat=-1)
+        else:
+            print("No more  messages to log")
+            time.sleep(10)
 
 if __name__ == "__main__":
 
     while True:
         try:
             server()
-        except mqttlib.DisconnectException:
-            print("Reconnecting")
         except KeyboardInterrupt:
             print("Bye")
             sys.exit()
-        except NoMQTTConnectionException:
-            # wait 5 mins before reconnecting
-            time.sleep(60*5)

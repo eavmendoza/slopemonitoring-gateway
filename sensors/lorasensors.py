@@ -4,11 +4,15 @@ from datetime import datetime as dt
 from dbio import txn
 
 def relay_serial_messages():
-    ser = serial.Serial('/dev/ttyAMA0')  # open serial port
+    ser = serial.Serial(port='/dev/ttyAMA0', baudrate=9600)  # open serial port
 
     while True:
         try:
-            line = ser.readline().strip().decode("utf-8")
+            lineRaw = ser.readline().decode("utf-8")
+            #print("RAW Serial Feed::::")
+            #print(lineRaw)
+            #line = lineRaw.strip().decode("utf-8")
+            line = lineRaw.replace("\r"," ").strip()
         except UnicodeDecodeError:
             print(">> Caught UnicodeDecodeError. Skipping line")
             continue

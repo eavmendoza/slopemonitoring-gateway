@@ -8,8 +8,8 @@ import sys
 
 def execute_cmd(cmd, wait_for_out=True):
     my_env = os.environ.copy()
-    my_env["PATH"] = "/home/pi/gateway:" + my_env["PATH"]
-    my_env["PYTHONPATH"] = "/home/pi/gateway"
+    my_env["PATH"] = "/home/pi/gateway2:" + my_env["PATH"]
+    my_env["PYTHONPATH"] = "/home/pi/gateway2"
     my_env["USER"] = 'pi'
     my_env["USERNAME"] = 'pi'
     p = subprocess.Popen(cmd, stdout = subprocess.PIPE, 
