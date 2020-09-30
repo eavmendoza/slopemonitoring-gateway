@@ -25,7 +25,7 @@ python-crontab==2.3.5
 python-dateutil==2.7.3
 python-memcached==1.59
 pytz==2018.5
-pyxdg==0.25
+pyxdg==0.26
 requests==2.19.1
 RPi.GPIO==0.6.3
 screenutils==0.0.1.6.2
